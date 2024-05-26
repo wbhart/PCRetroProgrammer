@@ -26,8 +26,8 @@
 
    .DATA
    
-   buffer DB 256 DUP  (0)
-   errors DB 1024 DUP (0ffh)
+   buffer DB 256 DUP  (0ffh)
+   errors DB 1024 DUP (0)
 
    .CODE
 
