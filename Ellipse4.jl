@@ -107,8 +107,8 @@ function drawEllipse(renderer, font, r, s, θ::Float64)
     @assert(A > 0)
 
     sum = A + abs(B) + C
-    sq = (2.0^23 - 4)/sum    # so that rounded sum < 2^23
-    fq = -(2.0^31 - 2)/F    # so that rounded F < 2^31
+    sq = (2.0^22 - 4)/sum    # so that rounded sum < 2^22
+    fq = -(2.0^30 - 2)/F    # so that rounded F < 2^31
     mq = min(sq, fq)
 
     A = Int(round(A*mq))
@@ -128,9 +128,17 @@ function drawEllipse(renderer, font, r, s, θ::Float64)
 
     xNE = sqrt(Float64(F)*Float64(2C-B)^2/(A+C-B)/Δ)
     yNE = (2A-B)*xNE/(2C-B)
+    if xNE < yNE*k2
+        yNE = -yNE
+        xNE = -xNE
+    end
 
     xNW = -sqrt(Float64(F)*Float64(2C+B)^2/(A+B+C)/Δ)
     yNW = -(2A+B)*xNW/(2C+B)
+    if xNW > yNW*k1
+        xNW = -xNW
+        yNW = -yNW
+    end
 
     xH = Int16(round(xN))
     yH = Int16(round(yN))
@@ -171,7 +179,55 @@ function drawEllipse(renderer, font, r, s, θ::Float64)
 
     render_text(renderer, font, "r: $r", 300, start_y)
     render_text(renderer, font, "s: $s", 300, start_y + 48 + line_gap)
-    render_text(renderer, font, "theta: $θ", 300, start_y + 2*(48 + line_gap))
+    render_text(renderer, font, "theta: $θ", 400, start_y + 3*(48 + line_gap))
+
+    Xinit = 2*Int(xV) - 1
+    Yinit = Int(yV) + 1
+
+    x = Int(xV)
+    y = Int(yV)
+
+    Fn = 4*C*Yinit + B*Xinit + 2*C
+    Fnw = Fn - 2*A*Xinit - 2*B*Yinit + 2*A - 2*B
+    d1 = div(A*Xinit*Xinit, 2) + B*Xinit*Yinit + 2*C*Yinit*Yinit + 2F
+
+    adj = (A&1)
+
+    Fn_n = 4*C
+    Fn_nw = 4*C - 2*B
+    Fnw_n = 4*C - 2*B
+    Fnw_nw = 4*A - 4*B + 4*C
+
+    cross1 = 2*B - 2*A
+
+    d1_max = abs(d1)
+    Fn_max = abs(Fn)
+    Fnw_max = abs(Fnw)
+
+    while y < yR || x > xR
+        drawPixel(renderer, x + 160, y + 100)
+
+        y += 1
+
+        if d1 < 0 || Fn - Fnw < cross1
+            d1 += Fn
+            Fn += Fn_n
+            Fnw += Fnw_n
+        else
+            x -= 1
+            d1 += Fnw
+            Fn += Fn_nw
+            Fnw += Fnw_nw
+        end
+
+        d1_max = max(d1_max, abs(d1))
+        Fn_max = max(Fn_max, abs(Fn))
+        Fnw_max = max(Fnw_max, abs(Fnw))
+    end
+
+    render_text(renderer, font, "d1: $d1_max", 600, start_y)
+    render_text(renderer, font, "Fn: $Fn_max", 600, start_y + 48 + line_gap)  # 48 is the font height, plus a gap
+    render_text(renderer, font, "Fnw: $Fnw_max", 600, start_y + 2*(48 + line_gap))
 end
 
 # Main loop
